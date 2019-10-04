@@ -1,10 +1,4 @@
-// Package main demonstrates show to connect ALVideoDevice to retreive
-// an image.
-//
-// You can use ffmpeg to convert the image in PNG with:
-//
-// 	ffmpeg -s 320x240 -pix_fmt rgb24 -i image.rgb image.png
-//
+// Package main is a terminal viewer for video device.
 package main
 
 import (
@@ -91,12 +85,6 @@ func printImage(img value.Value) {
 	image.pixels = values[6].(value.RawValue).Value()
 
 	//log.Printf("camera resolution: %dx%d\n", image.width, image.heigh)
-	file, err := os.Create("image.rgb")
-	if err != nil {
-		log.Fatalf("cannot create image: %s", err)
-	}
-	defer file.Close()
-	file.Write(image.pixels)
 
 	convertOptions := convert.DefaultOptions
 	convertOptions.FixedWidth = 100
