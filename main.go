@@ -3,14 +3,14 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	"io"
 	"log"
 	"os"
-	"os/signal"
 	"time"
 
 	"github.com/lugu/qiloop/app"
 	"github.com/lugu/qiloop/type/value"
+	"github.com/qeesung/image2ascii/convert"
 
 	"image"
 	"image/color"
@@ -18,7 +18,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 
-	"github.com/qeesung/image2ascii/convert"
+	ui "github.com/gizak/termui/v3"
 )
 
 var (
@@ -67,7 +67,7 @@ const (
 	hsv  = 12
 	dist = 21
 
-	fps = 10
+	fps = 5
 )
 
 func printImage(img value.Value) {
@@ -84,15 +84,20 @@ func printImage(img value.Value) {
 	image.heigh = int(values[1].(value.IntValue).Value())
 	image.pixels = values[6].(value.RawValue).Value()
 
-	//log.Printf("camera resolution: %dx%d\n", image.width, image.heigh)
+	termWidth, termHeight := ui.TerminalDimensions()
 
 	convertOptions := convert.DefaultOptions
-	convertOptions.FixedWidth = 100
-	convertOptions.FixedHeight = 40
+	convertOptions.FixedWidth = termWidth
+	convertOptions.FixedHeight = termHeight
 
 	// Create the image converter
 	converter := convert.NewImageConverter()
-	fmt.Print(converter.Image2ASCIIString(&image, &convertOptions))
+	text := converter.Image2ASCIIString(&image, &convertOptions)
+
+	_, err := io.WriteString(os.Stdout, text)
+	if err != nil {
+		log.Printf("Failed to write image: %s", err)
+	}
 }
 
 func main() {
@@ -134,26 +139,34 @@ func main() {
 	// Configure the camera
 	id, err := videoDevice.SubscribeCamera(id, camera, qvga, rgb, fps)
 	if err != nil {
+		videoDevice.Unsubscribe(id)
 		log.Fatalf("failed to initialize camera: %s", err)
 	}
+	defer videoDevice.Unsubscribe(id)
 
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
+	if err := ui.Init(); err != nil {
+		log.Print(err)
+		return
+	}
+	defer ui.Close()
 
-	timer := time.NewTicker(100 * time.Millisecond)
+	timer := time.NewTicker((1000 / fps) * time.Millisecond)
+	uiEvents := ui.PollEvents()
 
 	for {
 		select {
-		case s := <-interrupt:
-			log.Printf("%v: quitting.", s)
-			ok, err := videoDevice.Unsubscribe(id)
-			if !ok || err != nil {
-				log.Fatalf("failed to unsubscribe: %s", err)
+		case e := <-uiEvents:
+			switch e.ID {
+			case "q", "<C-c>":
+				return
+			case "<Resize>":
+				ui.Clear()
 			}
-			return
 		case <-timer.C:
 			img, err := videoDevice.GetImageRemote(id)
 			if err != nil {
+				videoDevice.Unsubscribe(id)
+				ui.Close()
 				log.Fatalf("failed to retrieve image: %s", err)
 			}
 			printImage(img)
