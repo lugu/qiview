@@ -3,22 +3,18 @@ package main
 
 import (
 	"flag"
-	"io"
 	"log"
-	"os"
 	"time"
 
 	"github.com/lugu/qiloop/app"
 	"github.com/lugu/qiloop/type/value"
-	"github.com/qeesung/image2ascii/convert"
+	tb "github.com/nsf/termbox-go"
 
 	"image"
 	"image/color"
 
-	_ "image/jpeg"
-	_ "image/png"
-
-	ui "github.com/gizak/termui/v3"
+	"github.com/qeesung/image2ascii/ascii"
+	"github.com/qeesung/image2ascii/convert"
 )
 
 var (
@@ -76,7 +72,8 @@ func printImage(img value.Value) {
 	// of values:
 	values, ok := img.(value.ListValue)
 	if !ok {
-		log.Fatalf("invalid return type: %#v", img)
+		log.Printf("invalid return type: %#v", img)
+		return
 	}
 	var image imageRGB
 	// Let's extract the image data.
@@ -84,7 +81,7 @@ func printImage(img value.Value) {
 	image.heigh = int(values[1].(value.IntValue).Value())
 	image.pixels = values[6].(value.RawValue).Value()
 
-	termWidth, termHeight := ui.TerminalDimensions()
+	termWidth, termHeight := tb.Size()
 
 	convertOptions := convert.DefaultOptions
 	convertOptions.FixedWidth = termWidth
@@ -92,12 +89,11 @@ func printImage(img value.Value) {
 
 	// Create the image converter
 	converter := convert.NewImageConverter()
-	text := converter.Image2ASCIIString(&image, &convertOptions)
+	var pixels [][]ascii.CharPixel
 
-	_, err := io.WriteString(os.Stdout, text)
-	if err != nil {
-		log.Printf("Failed to write image: %s", err)
-	}
+	pixels = converter.Image2CharPixelMatrix(&image, &convertOptions)
+	view := NewView(termWidth, termHeight, pixels)
+	view.Print()
 }
 
 func main() {
@@ -144,33 +140,39 @@ func main() {
 	}
 	defer videoDevice.Unsubscribe(id)
 
-	if err := ui.Init(); err != nil {
-		log.Print(err)
-		return
+	if err := tb.Init(); err != nil {
+		videoDevice.Unsubscribe(id)
+		log.Fatalf("failed to init terminal: %s", err)
 	}
-	defer ui.Close()
 
-	timer := time.NewTicker((1000 / fps) * time.Millisecond)
-	uiEvents := ui.PollEvents()
+	defer tb.Close()
+	tb.SetInputMode(tb.InputEsc)
+	tb.SetOutputMode(tb.Output256)
+
+	go func() {
+		for {
+			tb.Interrupt()
+			time.Sleep((1000 / fps) * time.Millisecond)
+		}
+	}()
 
 	for {
-		select {
-		case e := <-uiEvents:
-			switch e.ID {
-			case "q", "<C-c>":
-				return
-			case "<Resize>":
-				ui.Clear()
-			}
-		case <-timer.C:
+		e := tb.PollEvent()
+		switch e.Type {
+		case tb.EventInterrupt, tb.EventResize:
 			img, err := videoDevice.GetImageRemote(id)
 			if err != nil {
 				videoDevice.Unsubscribe(id)
-				ui.Close()
+				tb.Close()
 				log.Fatalf("failed to retrieve image: %s", err)
 			}
 			printImage(img)
+		case tb.EventKey:
+			if e.Key == tb.KeyCtrlC || e.Ch == 'q' {
+				return
+			}
 		}
+
 	}
 
 }
