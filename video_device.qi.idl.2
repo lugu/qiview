@@ -1,0 +1,155 @@
+interface ALVideoDevice
+	fn registerEvent(P0: uint32, P1: uint32, P2: uint64) -> uint64 //uid:0
+	fn unregisterEvent(P0: uint32, P1: uint32, P2: uint64) //uid:1
+	fn metaObject(P0: uint32) -> MetaObject //uid:2
+	fn terminate(P0: uint32) //uid:3
+	fn property(P0: any) -> any //uid:5
+	fn setProperty(P0: any, P1: any) //uid:6
+	fn properties() -> Vec<str> //uid:7
+	fn registerEventWithSignature(P0: uint32, P1: uint32, P2: uint64, P3: str) -> uint64 //uid:8
+	fn isStatsEnabled() -> bool //uid:80
+	fn enableStats(P0: bool) //uid:81
+	fn stats() -> Map<uint32,MethodStatistics> //uid:82
+	fn clearStats() //uid:83
+	fn isTraceEnabled() -> bool //uid:84
+	fn enableTrace(P0: bool) //uid:85
+	fn exit() //uid:100
+	fn __pCall(P0: uint32, P1: Vec<any>) -> int32 //uid:101
+	fn pCall(P0: any) -> any //uid:102
+	fn version() -> str //uid:103
+	fn ping() -> bool //uid:104
+	fn getMethodList() -> Vec<str> //uid:105
+	fn getMethodHelp(methodName: str) -> any //uid:106
+	fn getModuleHelp() -> any //uid:107
+	fn wait(id: int32,timeoutPeriod: int32) -> bool //uid:108
+	fn wait(id: int32) //uid:109
+	fn isRunning(id: int32) -> bool //uid:110
+	fn stop(id: int32) //uid:111
+	fn getBrokerName() -> str //uid:112
+	fn getUsage(name: str) -> str //uid:113
+	fn subscribeCamera(name: str,cameraIndex: int32,resolution: int32,colorSpace: int32,fps: int32) -> str //uid:114
+	fn subscribeCameras(name: str,cameraIndexes: any,resolutions: any,colorSpaces: any,fps: int32) -> str //uid:115
+	fn unsubscribe(nameId: str) -> bool //uid:116
+	fn getSubscribers() -> any //uid:117
+	fn getCameraIndexes() -> any //uid:118
+	fn getActiveCamera() -> int32 //uid:119
+	fn setActiveCamera(activeCamera: int32) -> bool //uid:120
+	fn getCameraModel(cameraIndex: int32) -> int32 //uid:121
+	fn isCameraSimulated(cameraIndex: int32) -> bool //uid:122
+	fn getCameraName(cameraIndex: int32) -> str //uid:123
+	fn getFrameRate(cameraIndex: int32) -> int32 //uid:124
+	fn getResolution(cameraIndex: int32) -> int32 //uid:125
+	fn getColorSpace(cameraIndex: int32) -> int32 //uid:126
+	fn getHorizontalFOV(cameraIndex: int32) -> float32 //uid:127
+	fn getVerticalFOV(cameraIndex: int32) -> float32 //uid:128
+	fn getParameterList(cameraIndex: int32) -> Vec<int32> //uid:129
+	fn getParameter(cameraIndex: int32,parameterId: int32) -> int32 //uid:130
+	fn getParameterRange(cameraIndex: int32,parameterId: int32) -> any //uid:131
+	fn getParameterInfo(cameraIndex: int32,parameterId: int32) -> any //uid:132
+	fn setParameter(cameraIndex: int32,parameterId: int32,value: int32) -> bool //uid:133
+	fn setParameterToDefault(cameraIndex: int32,parameterId: int32) -> bool //uid:134
+	fn setCameraCalibration(cameraIndex: int32,filenames: Vec<str>) -> bool //uid:135
+	fn setAllParametersToDefault(cameraIndex: int32) -> bool //uid:136
+	fn openCamera(P0: int32) -> bool //uid:137
+	fn closeCamera(P0: int32) -> bool //uid:138
+	fn isCameraOpen(P0: int32) -> bool //uid:139
+	fn startCamera(P0: int32) -> bool //uid:140
+	fn stopCamera(P0: int32) -> bool //uid:141
+	fn isCameraStarted(P0: int32) -> bool //uid:142
+	fn resetCamera(P0: int32) -> bool //uid:143
+	fn hasDepthCamera() -> bool //uid:144
+	fn getFrameRate(name: str) -> int32 //uid:145
+	fn setFrameRate(name: str,frameRate: int32) -> bool //uid:146
+	fn getActiveCamera(name: str) -> int32 //uid:147
+	fn setActiveCamera(name: str,cameraIndex: int32) -> bool //uid:148
+	fn getResolution(name: str) -> int32 //uid:149
+	fn setResolution(name: str,resolution: int32) -> bool //uid:150
+	fn getColorSpace(name: str) -> int32 //uid:151
+	fn setColorSpace(name: str,colorSpace: int32) -> bool //uid:152
+	fn getCameraParameterList(name: str) -> Vec<int32> //uid:153
+	fn getCameraParameter(name: str,parameterId: int32) -> int32 //uid:154
+	fn getCameraParameterRange(name: str,parameterId: int32) -> any //uid:155
+	fn getCameraParameterInfo(name: str,parameterId: int32) -> any //uid:156
+	fn setCameraParameter(name: str,parameterId: int32,value: int32) -> bool //uid:157
+	fn setCameraParameterToDefault(name: str,parameterId: int32) -> bool //uid:158
+	fn setAllCameraParametersToDefault(name: str) -> bool //uid:159
+	fn getImageLocal(name: str) -> unknown //uid:160
+	fn getImageRemote(name: str) -> any //uid:161
+	fn releaseImage(name: str) -> bool //uid:162
+	fn getActiveCameras(name: str) -> any //uid:163
+	fn setActiveCameras(name: str,cameraIndexes: any) -> any //uid:164
+	fn getResolutions(name: str) -> any //uid:165
+	fn setResolutions(name: str,resolutions: any) -> any //uid:166
+	fn getColorSpaces(name: str) -> any //uid:167
+	fn setColorSpaces(name: str,colorSpaces: any) -> any //uid:168
+	fn getCamerasParameter(name: str,parameterId: int32) -> any //uid:169
+	fn setCamerasParameter(name: str,parameterId: int32,values: any) -> any //uid:170
+	fn setCamerasParameterToDefault(name: str,parameterId: int32) -> any //uid:171
+	fn getImagesLocal(name: str) -> any //uid:172
+	fn getImagesRemote(name: str) -> any //uid:173
+	fn releaseImages(name: str) -> any //uid:174
+	fn getAngularPositionFromImagePosition(P0: int32, P1: Vec<float32>) -> Vec<float32> //uid:175
+	fn getImagePositionFromAngularPosition(P0: int32, P1: Vec<float32>) -> Vec<float32> //uid:176
+	fn getAngularSizeFromImageSize(P0: int32, P1: Vec<float32>) -> Vec<float32> //uid:177
+	fn getImageSizeFromAngularSize(P0: int32, P1: Vec<float32>) -> Vec<float32> //uid:178
+	fn getImageInfoFromAngularInfo(P0: int32, P1: Vec<float32>) -> Vec<float32> //uid:179
+	fn getImageInfoFromAngularInfoWithResolution(P0: int32, P1: Vec<float32>, P2: int32) -> Vec<float32> //uid:180
+	fn putImage(cameraIndex: int32,timeStamp: any,width: int32,height: int32,colorSpace: int32,imageBuffer: any) -> bool //uid:181
+	fn getExpectedImageParameters(cameraIndex: int32) -> any //uid:182
+	sig traceObject(P0: EventTrace) //uid:86
+end
+struct MetaMethodParameter
+	name: str
+	description: str
+end
+struct MetaMethod
+	uid: uint32
+	returnSignature: str
+	name: str
+	parametersSignature: str
+	description: str
+	parameters: Vec<MetaMethodParameter>
+	returnDescription: str
+end
+struct MetaSignal
+	uid: uint32
+	name: str
+	signature: str
+end
+struct MetaProperty
+	uid: uint32
+	name: str
+	signature: str
+end
+struct MetaObject
+	methods: Map<uint32,MetaMethod>
+	signals: Map<uint32,MetaSignal>
+	properties: Map<uint32,MetaProperty>
+	description: str
+end
+struct MinMaxSum
+	minValue: float32
+	maxValue: float32
+	cumulatedValue: float32
+end
+struct MethodStatistics
+	count: uint32
+	wall: MinMaxSum
+	user: MinMaxSum
+	system: MinMaxSum
+end
+struct timeval
+	tv_sec: int64
+	tv_usec: int64
+end
+struct EventTrace
+	id: uint32
+	kind: int32
+	slotId: uint32
+	arguments: any
+	timestamp: timeval
+	userUsTime: int64
+	systemUsTime: int64
+	callerContext: uint32
+	calleeContext: uint32
+end
