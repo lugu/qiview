@@ -18,7 +18,8 @@ import (
 )
 
 var (
-	id = "ascii" // video device subscriber id
+	id  = "ascii" // video device subscriber id
+	fps = 5
 )
 
 type imageRGB struct {
@@ -62,8 +63,6 @@ const (
 	rgb  = 11
 	hsv  = 12
 	dist = 21
-
-	fps = 5
 )
 
 func printImage(img value.Value) {
@@ -99,6 +98,7 @@ func printImage(img value.Value) {
 func main() {
 	var cameraName string
 	flag.StringVar(&cameraName, "camera", "top", "possible values: top, bottom, depth, stereo")
+	flag.IntVar(&fps, "fps", fps, "framerate")
 
 	flag.Parse()
 
@@ -133,7 +133,7 @@ func main() {
 	}
 
 	// Configure the camera
-	id, err := videoDevice.SubscribeCamera(id, camera, qvga, rgb, fps)
+	id, err := videoDevice.SubscribeCamera(id, camera, qvga, rgb, int32(fps))
 	if err != nil {
 		videoDevice.Unsubscribe(id)
 		log.Fatalf("failed to initialize camera: %s", err)
@@ -152,7 +152,7 @@ func main() {
 	go func() {
 		for {
 			tb.Interrupt()
-			time.Sleep((1000 / fps) * time.Millisecond)
+			time.Sleep((1000 / time.Duration(fps)) * time.Millisecond)
 		}
 	}()
 
