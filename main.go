@@ -12,9 +12,6 @@ import (
 
 	"image"
 	"image/color"
-
-	"github.com/qeesung/image2ascii/ascii"
-	"github.com/qeesung/image2ascii/convert"
 )
 
 var (
@@ -42,6 +39,11 @@ func (i *imageRGB) Bounds() image.Rectangle {
 }
 func (i *imageRGB) At(x, y int) color.Color {
 	var c color.RGBA
+	if len(i.pixels) < 3*y*i.width+3*x+2 {
+		return color.RGBA{
+			0, 255, 0, 255,
+		}
+	}
 	c.R = i.pixels[3*y*i.width+3*x]
 	c.G = i.pixels[3*y*i.width+3*x+1]
 	c.B = i.pixels[3*y*i.width+3*x+2]
@@ -80,18 +82,7 @@ func printImage(img value.Value) {
 	image.heigh = int(values[1].(value.IntValue).Value())
 	image.pixels = values[6].(value.RawValue).Value()
 
-	termWidth, termHeight := tb.Size()
-
-	convertOptions := convert.DefaultOptions
-	convertOptions.FixedWidth = termWidth
-	convertOptions.FixedHeight = termHeight
-
-	// Create the image converter
-	converter := convert.NewImageConverter()
-	var pixels [][]ascii.CharPixel
-
-	pixels = converter.Image2CharPixelMatrix(&image, &convertOptions)
-	view := NewView(termWidth, termHeight, pixels)
+	view := NewView(&image)
 	view.Print()
 }
 

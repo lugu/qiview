@@ -1,7 +1,11 @@
 package main
 
 import (
-	"github.com/qeesung/image2ascii/ascii"
+	"image"
+	"image/color"
+	"math"
+
+	"github.com/nfnt/resize"
 
 	tb "github.com/nsf/termbox-go"
 )
@@ -13,10 +17,12 @@ type View struct {
 }
 
 // Inspired from github.com/aybabtme/rgbterm
-func colorise(r, g, b uint8) uint16 {
+func colorise(c color.Color) uint16 {
+	R, G, B, _ := c.RGBA()
+	r, g, b := R>>8, G>>8, B>>8
 	// if all colors are equal, it might be in the grayscale range
 	if r == g && g == b {
-		color, ok := grayscale(r)
+		color, ok := grayscale(uint8(r))
 		if ok {
 			return color
 		}
@@ -85,11 +91,25 @@ func grayscale(scale uint8) (uint16, bool) {
 	return 0, false
 }
 
-func NewView(width, heigh int, pixels [][]ascii.CharPixel) *View {
+func toAscii(col color.Color) rune {
+
+	pixels := []rune(" .,:;i1tfLCG08@")
+	R, G, B, _ := col.RGBA()
+	var intensity float64 = 15.0 * float64(R>>8+G>>8+B>>8) / (256.0*3 + 1)
+	index := int(math.Floor(intensity + 0.5))
+	return pixels[index]
+}
+
+func NewView(img image.Image) *View {
+
+	width, heigh := tb.Size()
+	newImage := resize.Resize(uint(width), uint(heigh), img, resize.Lanczos3)
+
 	view := &View{
 		width: width,
 		heigh: heigh,
 	}
+
 	view.cells = make([][]tb.Cell, heigh)
 	for line := range view.cells {
 		view.cells[line] = make([]tb.Cell, width)
@@ -97,11 +117,12 @@ func NewView(width, heigh int, pixels [][]ascii.CharPixel) *View {
 
 	for bx := 0; bx < width; bx++ {
 		for by := 0; by < heigh; by++ {
-			pix := pixels[by][bx]
-			col := colorise(pix.R, pix.G, pix.B)
+			pix := newImage.At(bx, by)
+			ascii := toAscii(pix)
+			col := colorise(pix)
 
 			view.cells[by][bx] = tb.Cell{
-				rune(pixels[by][bx].Char),
+				ascii,
 				tb.Attribute(col),
 				tb.Attribute(0),
 			}
