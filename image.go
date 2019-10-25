@@ -95,7 +95,7 @@ func toAscii(col color.Color) rune {
 
 	pixels := []rune(" .,:;i1tfLCG08@")
 	R, G, B, _ := col.RGBA()
-	var intensity float64 = 15.0 * float64(R>>8+G>>8+B>>8) / (256.0*3 + 1)
+	var intensity float64 = 14.0 * float64(R>>8+G>>8+B>>8) / (256.0*3 + 1)
 	index := int(math.Floor(intensity + 0.5))
 	return pixels[index]
 }
