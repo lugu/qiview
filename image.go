@@ -103,7 +103,8 @@ func toAscii(col color.Color) rune {
 func NewView(img image.Image) *View {
 
 	width, heigh := tb.Size()
-	newImage := resize.Resize(uint(width), uint(heigh), img, resize.Lanczos3)
+	newImage := resize.Resize(uint(width), uint(heigh), img,
+		resize.NearestNeighbor)
 
 	view := &View{
 		width: width,
