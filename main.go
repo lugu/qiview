@@ -2,54 +2,21 @@
 package main
 
 import (
+	"errors"
 	"flag"
+	"fmt"
+	"image"
+	"image/color"
+	_ "image/jpeg"
 	"log"
 	"time"
 
+	"github.com/hajimehoshi/ebiten"
+	"github.com/hajimehoshi/ebiten/inpututil"
 	"github.com/lugu/qiloop/app"
 	"github.com/lugu/qiloop/type/value"
 	tb "github.com/nsf/termbox-go"
-
-	"image"
-	"image/color"
 )
-
-var (
-	id  = "ascii" // video device subscriber id
-	fps = 5
-)
-
-type imageRGB struct {
-	pixels       []byte
-	width, heigh int
-}
-
-func (i *imageRGB) ColorModel() color.Model {
-	return color.RGBAModel
-}
-func (i *imageRGB) Bounds() image.Rectangle {
-	return image.Rectangle{
-		Min: image.Point{
-			X: 0, Y: 0,
-		},
-		Max: image.Point{
-			X: int(i.width), Y: int(i.heigh),
-		},
-	}
-}
-func (i *imageRGB) At(x, y int) color.Color {
-	var c color.RGBA
-	if len(i.pixels) < 3*y*i.width+3*x+2 {
-		return color.RGBA{
-			0, 255, 0, 255,
-		}
-	}
-	c.R = i.pixels[3*y*i.width+3*x]
-	c.G = i.pixels[3*y*i.width+3*x+1]
-	c.B = i.pixels[3*y*i.width+3*x+2]
-	c.A = 0xff
-	return c
-}
 
 const (
 	topCam    = 0
@@ -65,75 +32,45 @@ const (
 	rgb  = 11
 	hsv  = 12
 	dist = 21
+
+	screenWidth  = 640
+	screenHeight = 480
 )
 
-func printImage(img value.Value) {
+var (
+	id          = "ascii" // video device subscriber id
+	fps         = 15
+	cameraName  = "top"
+	videoDevice ALVideoDeviceProxy
+
+	errQuit    = errors.New("Quitting...")
+	firstFrame = true
+)
+
+func getImage() (image.Image, error) {
+
+	img, err := videoDevice.GetImageRemote(id)
+	if err != nil {
+		return nil, fmt.Errorf("GetImageRemote: %s", err)
+	}
 
 	// GetImageRemote returns an value, let's cast it into a list
 	// of values:
 	values, ok := img.(value.ListValue)
 	if !ok {
-		log.Printf("invalid return type: %#v", img)
-		return
+		return nil, fmt.Errorf("Invalid type (not a list): %#v", img)
 	}
-	var image imageRGB
-	// Let's extract the image data.
-	image.width = int(values[0].(value.IntValue).Value())
-	image.heigh = int(values[1].(value.IntValue).Value())
-	image.pixels = values[6].(value.RawValue).Value()
-
-	view := NewView(&image)
-	view.Print()
+	image := &imageRGB{
+		width:  int(values[0].(value.IntValue).Value()),
+		heigh:  int(values[1].(value.IntValue).Value()),
+		pixels: values[6].(value.RawValue).Value(),
+	}
+	return image, nil
 }
 
-func main() {
-	var cameraName string
-	flag.StringVar(&cameraName, "camera", "top", "possible values: top, bottom, depth, stereo")
-	flag.IntVar(&fps, "fps", fps, "framerate")
-
-	flag.Parse()
-
-	var camera int32 = topCam
-	switch cameraName {
-	case "top":
-		camera = topCam
-	case "bottom":
-		camera = bottomCam
-	case "depth":
-		camera = depthCam
-	case "stereo":
-		camera = stereoCam
-	default:
-		log.Fatal("invalid camera argument")
-	}
-
-	// A Session object is used to connect the service directory.
-	sess, err := app.SessionFromFlag()
-	if err != nil {
-		log.Fatalf("failed to connect: %s", err)
-	}
-
-	// Using this session, let's instanciate our service
-	// constructor.
-	services := Services(sess)
-
-	// Using the constructor, we request a proxy to ALVideoDevice
-	videoDevice, err := services.ALVideoDevice()
-	if err != nil {
-		log.Fatalf("failed to create video device: %s", err)
-	}
-
-	// Configure the camera
-	id, err := videoDevice.SubscribeCamera(id, camera, qvga, rgb, int32(fps))
-	if err != nil {
-		videoDevice.Unsubscribe(id)
-		log.Fatalf("failed to initialize camera: %s", err)
-	}
-	defer videoDevice.Unsubscribe(id)
-
+func ascii() error {
 	if err := tb.Init(); err != nil {
-		videoDevice.Unsubscribe(id)
-		log.Fatalf("failed to init terminal: %s", err)
+		return err
 	}
 
 	defer tb.Close()
@@ -151,19 +88,131 @@ func main() {
 		e := tb.PollEvent()
 		switch e.Type {
 		case tb.EventInterrupt, tb.EventResize:
-			img, err := videoDevice.GetImageRemote(id)
+			image, err := getImage()
 			if err != nil {
-				videoDevice.Unsubscribe(id)
 				tb.Close()
-				log.Fatalf("failed to retrieve image: %s", err)
+				return err
 			}
-			printImage(img)
+
+			view := NewView(image)
+			view.Print()
 		case tb.EventKey:
-			if e.Key == tb.KeyCtrlC || e.Ch == 'q' {
-				return
+			if e.Key == tb.KeyCtrlC || e.Ch == 'q' || e.Key == tb.KeyEsc {
+				return nil
 			}
 		}
 
 	}
+}
 
+func update(screen *ebiten.Image) error {
+
+	fullscreen := ebiten.IsFullscreen()
+	cursorVisible := ebiten.IsCursorVisible()
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyQ) {
+		return errQuit
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyF) ||
+		inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		fullscreen = !fullscreen
+		cursorVisible = !cursorVisible
+	}
+
+	ebiten.SetFullscreen(fullscreen)
+	ebiten.SetCursorVisible(cursorVisible)
+
+	if ebiten.IsDrawingSkipped() {
+		return nil
+	}
+
+	if firstFrame {
+		screen.Fill(color.RGBA{0xeb, 0xeb, 0xeb, 0xff})
+		firstFrame = false
+		return nil
+	}
+
+	image, err := getImage()
+	if err != nil {
+		return err
+	}
+
+	// screenWidth, screenHeight := screen.Size()
+	size := image.Bounds().Size()
+	ebiten.SetScreenSize(size.X, size.Y)
+
+	op := &ebiten.DrawImageOptions{}
+	img, err := ebiten.NewImageFromImage(image, ebiten.FilterDefault)
+	if err != nil {
+		return err
+	}
+	screen.DrawImage(img, op)
+
+	return nil
+}
+
+func gui() error {
+
+	ebiten.SetRunnableInBackground(true)
+	ebiten.SetMaxTPS(fps)
+
+	// TODO: resize not yet supported
+	// call ebiten.SetWindowResizable(true)
+
+	err := ebiten.Run(update, screenWidth, screenHeight, 1.0, "QiView")
+	if err != nil && err != errQuit {
+		return err
+	}
+	return nil
+}
+
+func main() {
+	var is_ascii bool = false
+	flag.StringVar(&cameraName, "camera", cameraName, "possible values: top, bottom, depth, stereo")
+	flag.IntVar(&fps, "fps", fps, "framerate")
+	flag.BoolVar(&is_ascii, "ascii", is_ascii, "ascii mode")
+
+	flag.Parse()
+
+	var camera int32 = topCam
+	switch cameraName {
+	case "top":
+		camera = topCam
+	case "bottom":
+		camera = bottomCam
+	case "depth":
+		camera = depthCam
+	case "stereo":
+		camera = stereoCam
+	default:
+		log.Fatal("invalid camera argument")
+	}
+
+	sess, err := app.SessionFromFlag()
+	if err != nil {
+		log.Fatalf("failed to connect: %s", err)
+	}
+
+	videoDevice, err = Services(sess).ALVideoDevice()
+	if err != nil {
+		log.Fatalf("failed to create video device: %s", err)
+	}
+
+	id, err := videoDevice.SubscribeCamera(id, camera, qvga, rgb, int32(fps))
+	if err != nil {
+		videoDevice.Unsubscribe(id)
+		log.Fatalf("failed to initialize camera: %s", err)
+	}
+	defer videoDevice.Unsubscribe(id)
+
+	if is_ascii {
+		err = ascii()
+	} else {
+		err = gui()
+	}
+	if err != nil {
+		videoDevice.Unsubscribe(id)
+		log.Fatal(err)
+	}
 }

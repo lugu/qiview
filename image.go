@@ -10,6 +10,38 @@ import (
 	tb "github.com/nsf/termbox-go"
 )
 
+type imageRGB struct {
+	pixels       []byte
+	width, heigh int
+}
+
+func (i *imageRGB) ColorModel() color.Model {
+	return color.RGBAModel
+}
+func (i *imageRGB) Bounds() image.Rectangle {
+	return image.Rectangle{
+		Min: image.Point{
+			X: 0, Y: 0,
+		},
+		Max: image.Point{
+			X: int(i.width), Y: int(i.heigh),
+		},
+	}
+}
+func (i *imageRGB) At(x, y int) color.Color {
+	var c color.RGBA
+	if len(i.pixels) < 3*y*i.width+3*x+2 {
+		return color.RGBA{
+			0, 255, 0, 255,
+		}
+	}
+	c.R = i.pixels[3*y*i.width+3*x]
+	c.G = i.pixels[3*y*i.width+3*x+1]
+	c.B = i.pixels[3*y*i.width+3*x+2]
+	c.A = 0xff
+	return c
+}
+
 type View struct {
 	width int
 	heigh int
