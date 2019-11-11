@@ -73,7 +73,6 @@ func ascii() error {
 		return err
 	}
 
-	defer tb.Close()
 	tb.SetInputMode(tb.InputEsc)
 	tb.SetOutputMode(tb.Output256)
 
@@ -98,6 +97,7 @@ func ascii() error {
 			view.Print()
 		case tb.EventKey:
 			if e.Key == tb.KeyCtrlC || e.Ch == 'q' || e.Key == tb.KeyEsc {
+				tb.Close()
 				return nil
 			}
 		}
