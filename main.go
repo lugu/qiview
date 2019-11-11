@@ -194,7 +194,7 @@ func main() {
 		log.Fatalf("failed to connect: %s", err)
 	}
 
-	videoDevice, err = Services(sess).ALVideoDevice()
+	videoDevice, err = Services(sess).ALVideoDevice(nil)
 	if err != nil {
 		log.Fatalf("failed to create video device: %s", err)
 	}
