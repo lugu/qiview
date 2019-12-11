@@ -5,38 +5,22 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	bus "github.com/lugu/qiloop/bus"
 	basic "github.com/lugu/qiloop/type/basic"
-	object "github.com/lugu/qiloop/type/object"
 	value "github.com/lugu/qiloop/type/value"
 )
 
-// Constructor gives access to remote services
-type Constructor struct {
-	session bus.Session
-}
-
-// Services gives access to the services constructor
-func Services(s bus.Session) Constructor {
-	return Constructor{session: s}
-}
-
-// ALVideoDevice is the abstract interface of the service
-type ALVideoDevice interface {
-	// SubscribeCamera calls the remote procedure
-	SubscribeCamera(name string, cameraIndex int32, resolution int32, colorSpace int32, fps int32) (string, error)
-	// GetImageRemote calls the remote procedure
-	GetImageRemote(name string) (value.Value, error)
-	// Unsubscribe calls the remote procedure
-	Unsubscribe(nameId string) (bool, error)
-}
-
 // ALVideoDeviceProxy represents a proxy object to the service
 type ALVideoDeviceProxy interface {
-	object.Object
-	bus.Proxy
-	ALVideoDevice
+	SubscribeCamera(name string, cameraIndex int32, resolution int32, colorSpace int32, fps int32) (string, error)
+	GetImageRemote(name string) (value.Value, error)
+	Unsubscribe(nameId string) (bool, error)
+	// Generic methods shared by all objectsProxy
+	bus.ObjectProxy
+	// WithContext can be used cancellation and timeout
+	WithContext(ctx context.Context) ALVideoDeviceProxy
 }
 
 // proxyALVideoDevice implements ALVideoDeviceProxy
@@ -51,17 +35,17 @@ func MakeALVideoDevice(sess bus.Session, proxy bus.Proxy) ALVideoDeviceProxy {
 }
 
 // ALVideoDevice returns a proxy to a remote service
-func (c Constructor) ALVideoDevice(closer func(error)) (ALVideoDeviceProxy, error) {
-	proxy, err := c.session.Proxy("ALVideoDevice", 1)
+func ALVideoDevice(session bus.Session) (ALVideoDeviceProxy, error) {
+	proxy, err := session.Proxy("ALVideoDevice", 1)
 	if err != nil {
 		return nil, fmt.Errorf("contact service: %s", err)
 	}
+	return MakeALVideoDevice(session, proxy), nil
+}
 
-	err = proxy.OnDisconnect(closer)
-	if err != nil {
-		return nil, err
-	}
-	return MakeALVideoDevice(c.session, proxy), nil
+// WithContext bound future calls to the context deadline and cancellation
+func (p *proxyALVideoDevice) WithContext(ctx context.Context) ALVideoDeviceProxy {
+	return MakeALVideoDevice(p.session, p.Proxy().WithContext(ctx))
 }
 
 // SubscribeCamera calls the remote procedure
@@ -84,7 +68,11 @@ func (p *proxyALVideoDevice) SubscribeCamera(name string, cameraIndex int32, res
 	if err = basic.WriteInt32(fps, &buf); err != nil {
 		return ret, fmt.Errorf("serialize fps: %s", err)
 	}
-	response, err := p.Call("subscribeCamera", buf.Bytes())
+	methodID, err := p.Proxy().MetaObject().MethodID("subscribeCamera", "(siiii)", "s")
+	if err != nil {
+		return ret, err
+	}
+	response, err := p.Proxy().CallID(methodID, buf.Bytes())
 	if err != nil {
 		return ret, fmt.Errorf("call subscribeCamera failed: %s", err)
 	}
@@ -104,7 +92,11 @@ func (p *proxyALVideoDevice) GetImageRemote(name string) (value.Value, error) {
 	if err = basic.WriteString(name, &buf); err != nil {
 		return ret, fmt.Errorf("serialize name: %s", err)
 	}
-	response, err := p.Call("getImageRemote", buf.Bytes())
+	methodID, err := p.Proxy().MetaObject().MethodID("getImageRemote", "(s)", "m")
+	if err != nil {
+		return ret, err
+	}
+	response, err := p.Proxy().CallID(methodID, buf.Bytes())
 	if err != nil {
 		return ret, fmt.Errorf("call getImageRemote failed: %s", err)
 	}
@@ -124,7 +116,11 @@ func (p *proxyALVideoDevice) Unsubscribe(nameId string) (bool, error) {
 	if err = basic.WriteString(nameId, &buf); err != nil {
 		return ret, fmt.Errorf("serialize nameId: %s", err)
 	}
-	response, err := p.Call("unsubscribe", buf.Bytes())
+	methodID, err := p.Proxy().MetaObject().MethodID("unsubscribe", "(s)", "b")
+	if err != nil {
+		return ret, err
+	}
+	response, err := p.Proxy().CallID(methodID, buf.Bytes())
 	if err != nil {
 		return ret, fmt.Errorf("call unsubscribe failed: %s", err)
 	}

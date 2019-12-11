@@ -81,7 +81,7 @@ func (d *videoDev) SubscribeCamera(name string, cameraIndex int32,
 
 	err := d.cam.TurnOn()
 	if err != nil {
-		return "", fmt.Errorf("read config %s: %s", d, err)
+		return "", fmt.Errorf("read config %v: %s", d, err)
 	}
 
 	return "singleton", nil
@@ -91,7 +91,7 @@ func (d *videoDev) GetImageRemote(name string) (value.Value, error) {
 
 	buf, err := d.cam.Capture()
 	if err != nil {
-		return value.Void(), fmt.Errorf("Capture:", err)
+		return value.Void(), fmt.Errorf("Capture: %w", err)
 	}
 
 	width, height := d.cfg.Width, d.cfg.Height
