@@ -15,6 +15,7 @@ import (
 	"github.com/hajimehoshi/ebiten/inpututil"
 	"github.com/lugu/qiloop/app"
 	"github.com/lugu/qiloop/type/value"
+	"github.com/lugu/qiview/face"
 	tb "github.com/nsf/termbox-go"
 )
 
@@ -42,6 +43,7 @@ var (
 	fps         = 15
 	cameraName  = "top"
 	videoDevice ALVideoDeviceProxy
+	detectFaces = false
 
 	errQuit    = errors.New("Quitting...")
 	firstFrame = true
@@ -64,6 +66,9 @@ func getImage() (image.Image, error) {
 		width:  int(values[0].(value.IntValue).Value()),
 		heigh:  int(values[1].(value.IntValue).Value()),
 		pixels: values[6].(value.RawValue).Value(),
+	}
+	if detectFaces {
+		face.Draw(image)
 	}
 	return image, nil
 }
@@ -172,6 +177,7 @@ func main() {
 	flag.StringVar(&cameraName, "camera", cameraName, "possible values: top, bottom, depth, stereo")
 	flag.IntVar(&fps, "fps", fps, "framerate")
 	flag.BoolVar(&is_ascii, "ascii", is_ascii, "ascii mode")
+	flag.BoolVar(&detectFaces, "face", detectFaces, "enable face detection")
 
 	flag.Parse()
 

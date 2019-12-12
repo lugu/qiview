@@ -10,6 +10,7 @@ import (
 	tb "github.com/nsf/termbox-go"
 )
 
+// implements draw.Image
 type imageRGB struct {
 	pixels       []byte
 	width, heigh int
@@ -28,6 +29,7 @@ func (i *imageRGB) Bounds() image.Rectangle {
 		},
 	}
 }
+
 func (i *imageRGB) At(x, y int) color.Color {
 	var c color.RGBA
 	if len(i.pixels) < 3*y*i.width+3*x+2 {
@@ -40,6 +42,16 @@ func (i *imageRGB) At(x, y int) color.Color {
 	c.B = i.pixels[3*y*i.width+3*x+2]
 	c.A = 0xff
 	return c
+}
+
+func (i *imageRGB) Set(x, y int, col color.Color) {
+	if x < 0 || x >= i.width || y < 0 || y >= i.heigh {
+		return
+	}
+	r, g, b, _ := col.RGBA()
+	i.pixels[3*y*i.width+3*x] = byte(r)
+	i.pixels[3*y*i.width+3*x+1] = byte(g)
+	i.pixels[3*y*i.width+3*x+2] = byte(b)
 }
 
 type View struct {
